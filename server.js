@@ -7,24 +7,16 @@ const path = require('path');
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/overlay', (req, res) => res.sendFile(path.join(__dirname, 'overlay.html')));
 
-// THE BLACKLIST
-const bannedWords = ["nigger", "faggot"]; 
+// BLOCK LIST - Messages with these will be deleted instantly
+const banned = ["nigger", "faggot"];
 
 io.on('connection', (socket) => {
-    socket.on('join', (room) => {
-        socket.join(room);
-    });
+    socket.on('join', (room) => socket.join(room));
 
     socket.on('tts-msg', (data) => {
-        const msgLower = data.message.toLowerCase();
-        
-        // CHECK IF MESSAGE HAS BANNED WORDS
-        const containsBanned = bannedWords.some(word => msgLower.includes(word));
-        
-        if (containsBanned) {
-            console.log(`Blocked a message from ${data.username}: ${data.message}`);
-            return; // STOP HERE. Don't send it to the overlay.
-        }
+        const cleanMsg = data.message.toLowerCase();
+        // If it has a banned word, ignore it entirely
+        if (banned.some(word => cleanMsg.includes(word))) return;
 
         io.to(data.streamer).emit('play-tts', { 
             username: data.username, 
@@ -34,4 +26,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+http.listen(PORT, () => console.log('Server Live'));

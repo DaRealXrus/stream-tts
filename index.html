@@ -3,23 +3,21 @@
 <head>
     <title>Twitch TTS</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f0f0f; color: white; }
-        .card { background: #1e1e1e; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 350px; }
-        input { padding: 12px; width: 100%; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333; background: #2b2b2b; color: white; box-sizing: border-box; }
-        button { padding: 12px; width: 100%; background: #9146FF; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
-        button:hover { background: #772ce8; }
-        h2 { margin-top: 0; text-align: center; color: #bf94ff; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0e0e10; color: white; }
+        .box { background: #18181b; padding: 40px; border-radius: 12px; width: 320px; border: 1px solid #303032; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #3f3f3f; background: #000; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #9146ff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        h2 { text-align: center; margin-top: 0; color: #ad7bff; }
     </style>
 </head>
 <body>
-    <div class="card">
+    <div class="box">
         <h2>Twitch TTS</h2>
-        <input type="text" id="streamer" value="ranwolfyt" placeholder="Streamer Name">
+        <input type="text" id="streamer" value="ranwolfyt">
         <input type="text" id="username" placeholder="Your Name">
-        <input type="text" id="msg" placeholder="Your Message">
+        <input type="text" id="msg" placeholder="Message...">
         <button onclick="send()">Send Message</button>
     </div>
-
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -27,12 +25,9 @@
             const streamer = document.getElementById('streamer').value.toLowerCase().trim();
             const username = document.getElementById('username').value.trim();
             const message = document.getElementById('msg').value.trim();
-            
-            if(!streamer || !username || !message) return alert("Please fill in all boxes!");
-            
+            if(!streamer || !username || !message) return;
             socket.emit('tts-msg', { streamer, username, message });
             document.getElementById('msg').value = '';
-            alert("Sent!");
         }
     </script>
 </body>
