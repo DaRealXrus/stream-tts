@@ -1,22 +1,57 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Open+Sans:wght@800&display=swap');
+        body { margin: 0; overflow: hidden; background: transparent; font-family: 'Open Sans', sans-serif; }
+        #container {
+            display: none; /* Hidden by default */
+            padding: 20px;
+            text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000;
+            animation: fadeIn 0.5s ease-out;
+        }
+        #username-display { color: #9146FF; font-size: 32px; text-transform: uppercase; }
+        #message-display { color: white; font-size: 28px; font-weight: normal; margin-top: 10px; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
 <body>
+    <div id="container">
+        <div id="username-display"></div>
+        <div id="message-display"></div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        // Get the streamer name from the URL (e.g. ?user=ninja)
         const params = new URLSearchParams(window.location.search);
-        const streamerName = params.get('user').toLowerCase();
+        const streamerName = params.get('user')?.toLowerCase();
+        const container = document.getElementById('container');
 
         if (streamerName) {
             socket.emit('join', streamerName);
-            console.log("Listening for TTS for: " + streamerName);
         }
 
-        socket.on('play-tts', (text) => {
-            const speech = new SpeechSynthesisUtterance(text);
-            speech.rate = 1.0; 
-            window.speechSynthesis.speak(speech);
+        socket.on('play-tts', (data) => {
+            // 1. Show the text
+            document.getElementById('username-display').innerText = `${data.username} sent TTS:`;
+            document.getElementById('message-display').innerText = data.message;
+            container.style.display = 'block';
+
+            // 2. Build the Brian TTS URL
+            const brianUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(data.message)}`;
+            
+            // 3. Play the audio
+            const audio = new Audio(brianUrl);
+            audio.play();
+
+            // 4. Hide the text when the voice finishes
+            audio.onended = () => {
+                setTimeout(() => {
+                    container.style.display = 'none';
+                }, 2000); // Wait 2 extra seconds before disappearing
+            };
         });
     </script>
 </body>
