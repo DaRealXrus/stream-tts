@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Send TTS</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding-top: 50px; background: #121212; color: white; }
+        input { padding: 10px; width: 300px; margin-bottom: 10px; border-radius: 5px; border: none; }
+        button { padding: 10px 20px; background: #9146FF; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>Send TTS to Streamer</h2>
+    <input type="text" id="streamer" placeholder="Streamer Name (e.g. Ninja)">
+    <input type="text" id="msg" placeholder="Type your message here...">
+    <button onclick="send()">Send Message</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        function send() {
+            const streamer = document.getElementById('streamer').value.toLowerCase();
+            const message = document.getElementById('msg').value;
+            if(!streamer || !message) return alert("Fill everything out!");
+            
+            socket.emit('tts-msg', { streamer, message });
+            document.getElementById('msg').value = '';
+            alert("Sent!");
+        }
+    </script>
+</body>
+</html>

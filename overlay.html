@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        // Get the streamer name from the URL (e.g. ?user=ninja)
+        const params = new URLSearchParams(window.location.search);
+        const streamerName = params.get('user').toLowerCase();
+
+        if (streamerName) {
+            socket.emit('join', streamerName);
+            console.log("Listening for TTS for: " + streamerName);
+        }
+
+        socket.on('play-tts', (text) => {
+            const speech = new SpeechSynthesisUtterance(text);
+            speech.rate = 1.0; 
+            window.speechSynthesis.speak(speech);
+        });
+    </script>
+</body>
+</html>
