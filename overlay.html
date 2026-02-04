@@ -4,26 +4,17 @@
     <style>
         body { 
             margin: 0; padding: 0; overflow: hidden; background: transparent; 
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
             height: 100vh; display: flex; justify-content: center; align-items: center; text-align: center;
         }
         #container {
-            opacity: 0; transition: opacity 0.5s ease;
-            /* Soft shadow as requested */
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            opacity: 0; transition: opacity 0.5s ease-in-out;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Small shadow */
         }
-        .header { 
-            font-size: 22px; font-weight: 900; color: white; margin-bottom: 2px;
-        }
-        /* Blue Username */
-        .user { color: #00a2ff; } 
-        
-        /* Smaller Message text */
-        .msg { 
-            color: white; font-size: 18px; font-weight: 500;
-            max-width: 500px; margin: 0 auto; line-height: 1.2;
-        }
-        .active { opacity: 1 !important; }
+        .header { font-size: 22px; font-weight: 800; color: white; margin-bottom: 2px; }
+        .user { color: #3498db; } /* Blue Username */
+        .msg { font-size: 18px; color: white; font-weight: 500; max-width: 500px; }
+        .show { opacity: 1 !important; }
     </style>
 </head>
 <body>
@@ -36,52 +27,61 @@
     <script>
         const socket = io();
         const params = new URLSearchParams(window.location.search);
-        const user = params.get('user')?.toLowerCase() || "ranwolfyt";
+        const streamer = params.get('user')?.toLowerCase() || "ranwolfyt";
         
         const container = document.getElementById('container');
         const header = document.getElementById('header');
         const messageDiv = document.getElementById('message');
 
         let queue = [];
-        let isProcessing = false;
+        let active = false;
 
-        socket.emit('join', user);
+        socket.emit('join', streamer);
+        console.log("Joined room: " + streamer);
 
         socket.on('play-tts', (data) => {
+            console.log("New message arriving...");
             queue.push(data);
-            if (!isProcessing) next();
+            if (!active) process();
         });
 
-        async function next() {
-            if (queue.length === 0) { isProcessing = false; return; }
-            isProcessing = true;
+        async function process() {
+            if (queue.length === 0) { active = false; return; }
+            active = true;
 
-            const item = queue.shift();
-            header.innerHTML = `<span class="user">${item.username}</span> sent tts`;
-            messageDiv.innerText = item.message;
+            const current = queue.shift();
+            header.innerHTML = `<span class="user">${current.username}</span> sent tts`;
+            messageDiv.innerText = current.message;
             
-            container.classList.add('active');
+            // Show the text
+            container.classList.add('show');
 
-            // Using Streamlabs Brian - usually faster and less "filtered" than SE
-            const ttsUrl = `https://streamlabs.com/polly/speak?voice=Brian&text=${encodeURIComponent(item.message)}`;
-            const audio = new Audio(ttsUrl);
+            // The New Brian Voice Source (High quality & stable)
+            const brianUrl = `https://api.is-a-good-boy.com/voice/brian?text=${encodeURIComponent(current.message)}`;
+            const audio = new Audio(brianUrl);
 
-            // This is the "Unstuckable" logic
-            // It waits for EITHER the audio to end OR 7 seconds to pass
-            const timerPromise = new Promise(res => setTimeout(res, 7000));
-            const audioPromise = new Promise(res => {
+            // Logic: Wait for audio OR 7 seconds (failsafe)
+            const playAudio = new Promise(res => {
                 audio.onended = res;
-                audio.onerror = res;
-                audio.play().catch(res);
+                audio.onerror = (e) => {
+                    console.error("Audio failed to play", e);
+                    res();
+                };
+                audio.play().catch(err => {
+                    console.log("Autoplay blocked. Right-click source -> Interact -> Click anywhere.");
+                    res();
+                });
             });
 
-            await Promise.race([timerPromise, audioPromise]);
+            const waitSeven = new Promise(res => setTimeout(res, 7000));
 
-            // Fade out
-            container.classList.remove('active');
+            // Wait for whichever finishes first, then fade out
+            await Promise.race([playAudio, waitSeven]);
 
-            // Wait for fade to finish before next message
-            setTimeout(next, 800);
+            container.classList.remove('show');
+
+            // Wait 1 second for fade-out before next message
+            setTimeout(process, 1000);
         }
     </script>
 </body>
