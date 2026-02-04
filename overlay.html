@@ -3,46 +3,26 @@
 <head>
     <style>
         body { 
-            margin: 0; 
-            padding: 0;
-            overflow: hidden; 
-            background: transparent; 
-            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-            height: 100vh;
-            display: flex;
-            justify-content: center; 
-            align-items: center;     
-            text-align: center;
+            margin: 0; padding: 0; overflow: hidden; background: transparent; 
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            height: 100vh; display: flex; justify-content: center; align-items: center; text-align: center;
         }
-
         #container {
-            opacity: 0; 
-            transition: opacity 0.5s ease-in-out;
+            opacity: 0; transition: opacity 0.6s ease-in-out;
             padding: 20px;
-            /* Small shadow instead of outline */
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+            /* Small soft shadow */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
         }
-
         .header-text { 
-            font-size: 20px; /* Smaller header */
-            font-weight: 800; 
-            color: white; 
-            margin-bottom: 4px;
+            font-size: 18px; /* Smaller header */
+            font-weight: 800; color: white; margin-bottom: 2px;
         }
-
-        /* Blue Username */
-        .username { color: #3498db; }
-
-        /* Message text - smaller than header */
+        .username { color: #3498db; } /* Blue Username */
+        
         .message-text { 
-            color: white; 
-            font-size: 17px; 
-            font-weight: 500;
-            max-width: 500px;
-            word-wrap: break-word;
-            margin: 0 auto;
+            color: white; font-size: 15px; /* Message text is smaller */
+            font-weight: 500; max-width: 450px; margin: 0 auto;
         }
-
         .show { opacity: 1 !important; }
     </style>
 </head>
@@ -65,9 +45,7 @@
         let queue = [];
         let isPlaying = false;
 
-        if (streamerName) {
-            socket.emit('join', streamerName);
-        }
+        if (streamerName) socket.emit('join', streamerName);
 
         socket.on('play-tts', (data) => {
             queue.push(data);
@@ -79,38 +57,31 @@
             isPlaying = true;
 
             const current = queue.shift();
-            
-            // Set text content
             header.innerHTML = `<span class="username">${current.username}</span> sent tts`;
             messageDiv.innerText = current.message;
-
-            // Show UI
             container.classList.add('show');
 
-            // Play Brian TTS
             const brianUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(current.message)}`;
             const audio = new Audio(brianUrl);
 
-            // We want to wait for either the audio to finish OR a 7-second timer
+            // FAILSAFE: If audio fails or takes too long, we still move on
             const audioPromise = new Promise((resolve) => {
                 audio.onended = resolve;
-                audio.onerror = resolve; // If audio fails, move on
-                audio.play().catch(resolve); // If autoplay blocked, move on
+                audio.onerror = resolve; // Continue if the API blocks the word
+                audio.play().catch(resolve); 
             });
 
-            const fadeTimer = new Promise((resolve) => setTimeout(resolve, 7000));
+            // Wait 7 seconds OR until audio finishes (whichever is slower ensures the alert stays up)
+            const waitTimer = new Promise(res => setTimeout(res, 7000));
+            await Promise.race([audioPromise, waitTimer]); 
 
-            // Wait for audio to finish, but at LEAST wait 7 seconds total for the alert
-            await Promise.all([audioPromise, fadeTimer]);
-
-            // Hide UI
+            // Fade out
             container.classList.remove('show');
 
-            // Small delay before next message starts to allow fade-out
             setTimeout(() => {
                 isPlaying = false;
                 processQueue();
-            }, 600); 
+            }, 1000); // 1s gap between alerts
         }
     </script>
 </body>
