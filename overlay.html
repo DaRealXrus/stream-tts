@@ -2,54 +2,48 @@
 <html>
 <head>
     <style>
-        /* Using a clean, standard sans-serif font */
         body { 
             margin: 0; 
             padding: 0;
             overflow: hidden; 
             background: transparent; 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
             height: 100vh;
             display: flex;
-            justify-content: center; /* Centers horizontally */
-            align-items: center;     /* Centers vertically */
+            justify-content: center; 
+            align-items: center;     
             text-align: center;
         }
 
         #container {
-            opacity: 0; /* Hidden by default */
-            transition: opacity 0.5s ease-in-out; /* Smooth fade in/out */
+            opacity: 0; 
+            transition: opacity 0.5s ease-in-out;
             padding: 20px;
             /* Small shadow instead of outline */
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
         }
 
-        /* "(Name) sent tts" styling */
         .header-text { 
-            font-size: 24px; 
+            font-size: 20px; /* Smaller header */
             font-weight: 800; 
             color: white; 
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
-        /* The Blue Username */
-        .username { 
-            color: #3498db; /* Nice Blue */
-        }
+        /* Blue Username */
+        .username { color: #3498db; }
 
-        /* The Message styling - slightly smaller */
+        /* Message text - smaller than header */
         .message-text { 
             color: white; 
-            font-size: 20px; 
+            font-size: 17px; 
             font-weight: 500;
-            max-width: 600px; /* Keeps text from stretching too wide */
+            max-width: 500px;
             word-wrap: break-word;
+            margin: 0 auto;
         }
 
-        /* Show class to trigger fade in */
-        .show {
-            opacity: 1 !important;
-        }
+        .show { opacity: 1 !important; }
     </style>
 </head>
 <body>
@@ -62,41 +56,62 @@
     <script>
         const socket = io();
         const params = new URLSearchParams(window.location.search);
-        const streamerName = params.get('user')?.toLowerCase();
+        const streamerName = params.get('user')?.toLowerCase() || "ranwolfyt";
         
         const container = document.getElementById('container');
         const header = document.getElementById('header');
         const messageDiv = document.getElementById('message');
 
-        let hideTimer; // Variable to store the 7-second countdown
+        let queue = [];
+        let isPlaying = false;
 
         if (streamerName) {
             socket.emit('join', streamerName);
         }
 
         socket.on('play-tts', (data) => {
-            // 1. Clear any existing timer so it doesn't fade out early
-            clearTimeout(hideTimer);
+            queue.push(data);
+            processQueue();
+        });
 
-            // 2. Set the text
-            header.innerHTML = `<span class="username">${data.username}</span> sent tts`;
-            messageDiv.innerText = data.message;
+        async function processQueue() {
+            if (isPlaying || queue.length === 0) return;
+            isPlaying = true;
 
-            // 3. Show the container
+            const current = queue.shift();
+            
+            // Set text content
+            header.innerHTML = `<span class="username">${current.username}</span> sent tts`;
+            messageDiv.innerText = current.message;
+
+            // Show UI
             container.classList.add('show');
 
-            // 4. Play Brian TTS
-            const brianUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(data.message)}`;
+            // Play Brian TTS
+            const brianUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=${encodeURIComponent(current.message)}`;
             const audio = new Audio(brianUrl);
-            
-            // Try to play audio, but don't crash if it fails
-            audio.play().catch(e => console.log("Audio play blocked or failed"));
 
-            // 5. FORCE fade out after 7 seconds
-            hideTimer = setTimeout(() => {
-                container.classList.remove('show');
-            }, 7000);
-        });
+            // We want to wait for either the audio to finish OR a 7-second timer
+            const audioPromise = new Promise((resolve) => {
+                audio.onended = resolve;
+                audio.onerror = resolve; // If audio fails, move on
+                audio.play().catch(resolve); // If autoplay blocked, move on
+            });
+
+            const fadeTimer = new Promise((resolve) => setTimeout(resolve, 7000));
+
+            // Wait for audio to finish, but at LEAST wait 7 seconds total for the alert
+            await Promise.all([audioPromise, fadeTimer]);
+
+            // Hide UI
+            container.classList.remove('show');
+
+            // Small delay before next message starts to allow fade-out
+            setTimeout(() => {
+                isPlaying = false;
+                processQueue();
+            }, 600); 
+        }
     </script>
 </body>
 </html>
